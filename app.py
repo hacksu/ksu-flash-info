@@ -82,10 +82,13 @@ def start():
 def get_flashcash():
     # Root url for the account service
     root_url = 'https://services.jsatech.com'
-    
+
+    username = None
+    password = None
+
     # STAGE 1
     url = root_url + '/login.php';
-    values = {'cid':40,'save':1,'loginphrase':'cfullmer','password':'Gyroman1','x':1,'y':1}
+    values = {'cid':40,'save':1,'loginphrase': username,'password': password,'x':1,'y':1}
     data = urllib.urlencode(values)
     req = urllib2.Request(url, data)
     response = ClientCookie.urlopen(req)
