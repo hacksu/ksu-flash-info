@@ -66,7 +66,7 @@ def support_jsonp(f):
     return decorated_function
 
 
-@app.route('/',methods=['POST'])
+@app.route('/',methods=['POST','GET'])
 @support_jsonp
 @crossdomain(origin='*')
 def start():
@@ -77,6 +77,9 @@ def start():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+    else:
+        username = request.args['username']
+        password = request.args['password']
 
     # Root url for the account service
     root_url = 'https://keys.kent.edu:44220/ePROD'
@@ -136,8 +139,81 @@ def start():
     # Return the schedule as a json.
     return simplejson.dumps(schedule)
 
+@app.route('/info/',methods=['POST','GET'])
+@support_jsonp
+@crossdomain(origin='*')
+def start():
+    username = None
+    password = None
 
-@app.route("/flashcash/",methods=['POST'])
+    # Get the POST paramters
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+    else:
+        username = request.args['username']
+        password = request.args['password']
+
+    # Root url for the account service
+    root_url = 'https://keys.kent.edu:44220/ePROD'
+
+    # Retrieve the login page.
+    url = root_url + '/twbkwbis.P_WWWLogin'
+    req = urllib2.Request(url)
+    response = ClientCookie.urlopen(req)
+    the_page = response.read()
+
+    # Login into the service.
+    url = root_url + '/twbkwbis.P_ValLogin'
+    values = {'sid':username,'PIN':password}
+    data = urllib.urlencode(values)
+    req = urllib2.Request(url, data)
+    response = ClientCookie.urlopen(req)
+    the_page = response.read()
+
+    # Get the HTML for the schedule page.
+    url = root_url + '/bwskgstu.P_StuInfo'
+    req = urllib2.Request(url)
+    response = ClientCookie.urlopen(req)
+    the_page = response.read()
+    response.close()
+    print the_page
+
+    # Instantiate the parser and fed it some HTML.
+    soup = BeautifulSoup(the_page, "lxml")
+    # Instantiate the schedule list and course dictionary.
+    schedule = []
+    course = {}
+
+    # Locate all the tables that have the course information.
+    # Note: Course information comes in pairs of tables so a flag is used to ensure both we parsed first.
+    tables = soup.find_all('table','datadisplaytable')
+    second_table_proccessed = False
+
+    for table in tables:
+        keys = table.find_all('th', 'ddlabel')
+        if len(keys) == 0:
+            keys = table.find_all('th', 'ddheader')
+            second_table_proccessed = True
+        # Course title is only found in the table with the "ddlabels".
+        else:
+            course['Course'] = str(table.find('caption').text)
+
+        values = table.find_all('td', 'dddefault')
+        for i in range(0,len(keys)-1):
+            course[str(keys[i].text)] = str(values[i].text.strip())
+
+        # Add the course dictionary to the list and reset the dictionary.
+        if second_table_proccessed == True:
+            schedule.append(course)
+            second_table_proccessed = False
+            course = {}
+
+    # Return the schedule as a json.
+    return simplejson.dumps(schedule)
+
+
+@app.route("/flashcash/",methods=['POST','GET'])
 @support_jsonp
 @crossdomain(origin='*')
 def get_flashcash():
@@ -151,6 +227,9 @@ def get_flashcash():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+    else:
+        username = request.args['username']
+        password = request.args['password']
 
     # STAGE 1
     url = root_url + '/login.php?cid=40&';
@@ -217,6 +296,8 @@ def get_flashcash():
     balance.append(meal_plan)
     balance.append(flash_cash)    
     return simplejson.dumps(balance)
+
+
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
