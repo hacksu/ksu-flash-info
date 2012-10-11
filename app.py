@@ -3,12 +3,26 @@ import urllib2
 import ClientCookie
 import simplejson
 import os
+from functools import wraps
 from bs4 import BeautifulSoup
-from flask import Flask, request
+from flask import Flask, request, current_app
 
 app = Flask(__name__)
 
+def support_jsonp(f):
+    """Wraps JSONified output for JSONP"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        callback = request.args.get('callback', False)
+        if callback:
+            content = str(callback) + '(' + str(f().data) + ')'
+            return current_app.response_class(content, mimetype='application/json')
+        else:
+            return f(*args, **kwargs)
+    return decorated_function
+
 @app.route('/',methods=['POST'])
+@support_jsonp
 def start():
     username = None
     password = None
@@ -17,6 +31,7 @@ def start():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        print password
     else:
         return 'Invalid request.'
 
