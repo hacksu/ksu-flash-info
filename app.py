@@ -66,7 +66,7 @@ def support_jsonp(f):
     return decorated_function
 
 
-@app.route('/',methods=['POST', 'GET'])
+@app.route('/',methods=['POST'])
 @support_jsonp
 @crossdomain(origin='*')
 def start():
@@ -77,9 +77,6 @@ def start():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-    else:
-        username = request.args['username']
-        password = request.args['password']
 
     # Root url for the account service
     root_url = 'https://keys.kent.edu:44220/ePROD'
@@ -140,7 +137,9 @@ def start():
     return simplejson.dumps(schedule)
 
 
-@app.route("/flashcash/")
+@app.route("/flashcash/",methods=['POST'])
+@support_jsonp
+@crossdomain(origin='*')
 def get_flashcash():
     # Root url for the account service
     root_url = 'https://services.jsatech.com'
@@ -148,44 +147,64 @@ def get_flashcash():
     username = None
     password = None
 
+    # Get the POST paramters
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+    
+    print username
+
     # STAGE 1
-    url = root_url + '/login.php';
-    values = {'cid':40,'save':1,'loginphrase': username,'password': password,'x':1,'y':1}
+    url = root_url + '/login.php?cid=40&';
+    values = {'cid':'40','save':'1','loginphrase': username,'password': password,'x':'1','y':'1'}
     data = urllib.urlencode(values)
     req = urllib2.Request(url, data)
-    response = ClientCookie.urlopen(req)
+    response = urllib2.urlopen(req)
     the_page = response.read()
+    response.close()
+    
     key_index = the_page.rfind('window.location.href=')
     login_url = the_page[key_index + 22:key_index + 97]
     key_cid = the_page[key_index + 32:key_index + 78]
     key = the_page[key_index + 32:key_index + 70]
 
     #STAGE 2
-    url = root_url + login_url;
+    url = root_url + login_url
     req = urllib2.Request(url, data)
-    response = ClientCookie.urlopen(req)
+    response = urllib2.urlopen(req)
     the_page = response.read()
+    response.close()
+    #print the_page
 
     #STAGE 3
     url = root_url + '/login-check.php' + key;
     req = urllib2.Request(url, data)
-    response = ClientCookie.urlopen(req)
+    response = urllib2.urlopen(req)
     the_page = response.read()
-
+    response.close()
+        
     #STAGE 4
     url = root_url + '/index.php' + key_cid;
     req = urllib2.Request(url, data)
-    response = ClientCookie.urlopen(req)
+    response = urllib2.urlopen(req)
     the_page = response.read()
-    print the_page
-    #print the_page[the_page.rfind('Current Balance:'):the_page.rfind('Current Balance:') + 28]
+    response.close()
+    
+    # YES I KNOW IT DOESN"T MAKE SENSE! DON"T ASK!
+    url = root_url + '/index.php' + key_cid;
+    req = urllib2.Request(url, data)
+    response = urllib2.urlopen(req)
+    the_page = response.read()
+    response.close()
+    raw_balance =  the_page[the_page.rfind('Current Balance:'):]
+    balance = raw_balance[17:raw_balance.find('</b>')]
 
     url = root_url + '/logout.php' + key_cid;
     req = urllib2.Request(url, data)
-    response = ClientCookie.urlopen(req)
+    response = urllib2.urlopen(req)
     the_page = response.read()
-    return "hello world"
-
+    response.close()
+    return balance
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
