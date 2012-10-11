@@ -66,7 +66,7 @@ def support_jsonp(f):
     return decorated_function
 
 
-@app.route('/',methods=['POST','GET'])
+@app.route('/schedule',methods=['POST','GET'])
 @support_jsonp
 @crossdomain(origin='*')
 def start():
@@ -142,7 +142,7 @@ def start():
 @app.route('/info/',methods=['POST','GET'])
 @support_jsonp
 @crossdomain(origin='*')
-def start():
+def info():
     username = None
     password = None
 
