@@ -151,8 +151,6 @@ def get_flashcash():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-    
-    print username
 
     # STAGE 1
     url = root_url + '/login.php?cid=40&';
@@ -196,15 +194,29 @@ def get_flashcash():
     response = urllib2.urlopen(req)
     the_page = response.read()
     response.close()
-    raw_balance =  the_page[the_page.rfind('Current Balance:'):]
-    balance = raw_balance[17:raw_balance.find('</b>')]
+    raw_balance =  the_page[the_page.find('Current Balance:'):]
+    flash_cash = {}
+    flash_cash['flash_cash'] = raw_balance[17:raw_balance.find('</b>')]
+    
+    meal_plan = {}
+    meal_plan['meal_plan'] = '0.00'
+        
+    # Get the user's meal plan as well.
+    if raw_balance.count("Current Balance:") == 2:
+        raw_balance =  the_page[the_page.rfind('Current Balance:'):]
+        meal_plan['meal_plan'] = raw_balance[17:raw_balance.find('</b>')]
 
     url = root_url + '/logout.php' + key_cid;
     req = urllib2.Request(url, data)
     response = urllib2.urlopen(req)
     the_page = response.read()
     response.close()
-    return balance
+    
+    # Construct a json object to return
+    balance = [];
+    balance.append(meal_plan)
+    balance.append(flash_cash)    
+    return simplejson.dumps(balance)
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
