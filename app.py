@@ -66,7 +66,7 @@ def support_jsonp(f):
     return decorated_function
 
 
-@app.route('/schedule',methods=['POST','GET'])
+@app.route('/schedule/',methods=['POST','GET'])
 @support_jsonp
 @crossdomain(origin='*')
 def start():
