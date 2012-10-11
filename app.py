@@ -21,7 +21,7 @@ def support_jsonp(f):
             return f(*args, **kwargs)
     return decorated_function
 
-@app.route('/',methods=['POST'])
+@app.route('/',methods=['POST', 'GET'])
 @support_jsonp
 def start():
     username = None
@@ -31,9 +31,9 @@ def start():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        print password
     else:
-        return 'Invalid request.'
+        username = request.args['username']
+        password = request.args['password']
 
     # Root url for the account service
     root_url = 'https://keys.kent.edu:44220/ePROD'
