@@ -203,6 +203,10 @@ def info():
                 j = i + 3
             else:
                 j = i
+            
+            if j >= len(values):
+                break
+            
             info[str(keys[i].text)] = str(values[j].text.strip())
 
         # Add the course dictionary to the list and reset the dictionary.
