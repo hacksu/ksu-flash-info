@@ -173,44 +173,44 @@ def start():
 
     # Get the HTML for the schedule page.
     url = root_url + '/bwskgstu.P_StuInfo'
-    req = urllib2.Request(url)
+    values = {'term_in':'201280'}
+    data = urllib.urlencode(values)
+    req = urllib2.Request(url, data)
     response = ClientCookie.urlopen(req)
     the_page = response.read()
-    response.close()
-    print the_page
 
     # Instantiate the parser and fed it some HTML.
     soup = BeautifulSoup(the_page, "lxml")
     # Instantiate the schedule list and course dictionary.
-    schedule = []
-    course = {}
+    wrapper = []
+    info = {}
 
     # Locate all the tables that have the course information.
     # Note: Course information comes in pairs of tables so a flag is used to ensure both we parsed first.
     tables = soup.find_all('table','datadisplaytable')
-    second_table_proccessed = False
-
+    
     for table in tables:
         keys = table.find_all('th', 'ddlabel')
-        if len(keys) == 0:
-            keys = table.find_all('th', 'ddheader')
-            second_table_proccessed = True
-        # Course title is only found in the table with the "ddlabels".
-        else:
-            course['Course'] = str(table.find('caption').text)
+        # Info title is only found in the table with the "ddlabels".
+        info['info'] = str(table.find('caption').text)
 
         values = table.find_all('td', 'dddefault')
+        
+        j = 0
+        
         for i in range(0,len(keys)-1):
-            course[str(keys[i].text)] = str(values[i].text.strip())
+            if info['info'].find('Student') >= 0:
+                j = i + 3
+            else:
+                j = i
+            info[str(keys[i].text)] = str(values[j].text.strip())
 
         # Add the course dictionary to the list and reset the dictionary.
-        if second_table_proccessed == True:
-            schedule.append(course)
-            second_table_proccessed = False
-            course = {}
+        wrapper.append(info)
+        info = {}
 
     # Return the schedule as a json.
-    return simplejson.dumps(schedule)
+    return simplejson.dumps(wrapper)
 
 
 @app.route("/flashcash/",methods=['POST','GET'])
@@ -296,8 +296,6 @@ def get_flashcash():
     balance.append(meal_plan)
     balance.append(flash_cash)    
     return simplejson.dumps(balance)
-
-
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
