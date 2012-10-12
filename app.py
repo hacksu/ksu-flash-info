@@ -66,7 +66,7 @@ def support_jsonp(f):
     return decorated_function
 
 
-@app.route('/schedule/',methods=['POST','GET'])
+@app.route('/ksuapp/',methods=['POST','GET'])
 @support_jsonp
 @crossdomain(origin='*')
 def start():
@@ -107,37 +107,10 @@ def start():
     the_page = response.read()
 
     # Instantiate the parser and fed it some HTML.
-    soup = BeautifulSoup(the_page, "lxml")
-    # Instantiate the schedule list and course dictionary.
-    schedule = []
-    course = {}
-
-    # Locate all the tables that have the course information.
-    # Note: Course information comes in pairs of tables so a flag is used to ensure both we parsed first.
-    tables = soup.find_all('table','datadisplaytable')
-    second_table_proccessed = False
-
-    for table in tables:
-        keys = table.find_all('th', 'ddlabel')
-        if len(keys) == 0:
-            keys = table.find_all('th', 'ddheader')
-            second_table_proccessed = True
-        # Course title is only found in the table with the "ddlabels".
-        else:
-            course['Course'] = str(table.find('caption').text)
-
-        values = table.find_all('td', 'dddefault')
-        for i in range(0,len(keys)-1):
-            course[str(keys[i].text)] = str(values[i].text.strip())
-
-        # Add the course dictionary to the list and reset the dictionary.
-        if second_table_proccessed == True:
-            schedule.append(course)
-            second_table_proccessed = False
-            course = {}
+    soup = BeautifulSoup(the_page, "lxml")    
 
     # Return the schedule as a json.
-    return simplejson.dumps(schedule)
+    return simplejson.dumps(_parseSchedule(soup))
 
 @app.route('/info/',methods=['POST','GET'])
 @support_jsonp
@@ -181,41 +154,9 @@ def info():
 
     # Instantiate the parser and fed it some HTML.
     soup = BeautifulSoup(the_page, "lxml")
-    # Instantiate the schedule list and course dictionary.
-    wrapper = []
-    info = {}
-
-    # Locate all the tables that have the course information.
-    # Note: Course information comes in pairs of tables so a flag is used to ensure both we parsed first.
-    tables = soup.find_all('table','datadisplaytable')
-    
-    for table in tables:
-        keys = table.find_all('th', 'ddlabel')
-        # Info title is only found in the table with the "ddlabels".
-        info['info'] = str(table.find('caption').text)
-
-        values = table.find_all('td', 'dddefault')
-        
-        j = 0
-        
-        for i in range(0,len(keys)-1):
-            if info['info'].find('Student') >= 0:
-                j = i + 3
-            else:
-                j = i
-            
-            if j >= len(values):
-                break
-            
-            info[str(keys[i].text)] = str(values[j].text.strip())
-
-        # Add the course dictionary to the list and reset the dictionary.
-        wrapper.append(info)
-        info = {}
 
     # Return the schedule as a json.
-    return simplejson.dumps(wrapper)
-
+    return simplejson.dumps(_parseInfo(soup))
 
 @app.route("/flashcash/",methods=['POST','GET'])
 @support_jsonp
@@ -277,6 +218,77 @@ def get_flashcash():
     response = urllib2.urlopen(req)
     the_page = response.read()
     response.close()
+         
+    return simplejson.dumps(_parseBalance(the_page))
+
+# Parse the html to retrieve the schedule.
+def _parseSchedule(soup):
+    # Instantiate the schedule list and course dictionary.
+    schedule = []
+    course = {}
+
+    # Locate all the tables that have the course information.
+    # Note: Course information comes in pairs of tables so a flag is used to ensure both we parsed first.
+    tables = soup.find_all('table','datadisplaytable')
+    second_table_proccessed = False
+
+    for table in tables:
+        keys = table.find_all('th', 'ddlabel')
+        if len(keys) == 0:
+            keys = table.find_all('th', 'ddheader')
+            second_table_proccessed = True
+        # Course title is only found in the table with the "ddlabels".
+        else:
+            course['Course'] = str(table.find('caption').text)
+
+        values = table.find_all('td', 'dddefault')
+        for i in range(0,len(keys)-1):
+            course[str(keys[i].text)] = str(values[i].text.strip())
+
+        # Add the course dictionary to the list and reset the dictionary.
+        if second_table_proccessed == True:
+            schedule.append(course)
+            second_table_proccessed = False
+            course = {}
+    return schedule
+
+# Parese the html to find the student information.
+def _parseInfo(soup):
+    # Instantiate the schedule list and course dictionary.
+    wrapper = []
+    info = {}
+
+    # Locate all the tables that have the student information.
+    tables = soup.find_all('table','datadisplaytable')
+    
+    for table in tables:
+        keys = table.find_all('th', 'ddlabel')
+        # Info title is only found in the table with the "ddlabels".
+        info['info'] = str(table.find('caption').text)
+
+        values = table.find_all('td', 'dddefault')
+        
+        j = 0
+        
+        for i in range(0,len(keys)-1):
+            # Need to account for not the same number of labels and values.
+            if info['info'].find('Student') >= 0:
+                j = i + 3
+            else:
+                j = i            
+            if j >= len(values):
+                break
+            
+            info[str(keys[i].text)] = str(values[j].text.strip())
+
+        # Add the info dictionary to the list and reset the dictionary.
+        wrapper.append(info)
+        info = {}
+        
+    return wrapper
+
+#Parse the HTML to get the balances
+def _parseBalance(the_page):
     raw_balance =  the_page[the_page.find('Current Balance:'):]
     flash_cash = {}
     flash_cash['flash_cash'] = raw_balance[17:raw_balance.find('</b>')]
@@ -288,18 +300,13 @@ def get_flashcash():
     if raw_balance.count("Current Balance:") == 2:
         raw_balance =  the_page[the_page.rfind('Current Balance:'):]
         meal_plan['meal_plan'] = raw_balance[17:raw_balance.find('</b>')]
-
-    url = root_url + '/logout.php' + key_cid;
-    req = urllib2.Request(url, data)
-    response = urllib2.urlopen(req)
-    the_page = response.read()
-    response.close()
     
     # Construct a json object to return
     balance = [];
     balance.append(meal_plan)
-    balance.append(flash_cash)    
-    return simplejson.dumps(balance)
+    balance.append(flash_cash) 
+    
+    return balance    
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
